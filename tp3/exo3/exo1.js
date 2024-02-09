@@ -26,19 +26,7 @@ scene.background = new THREE.CubeTextureLoader().setPath('textures/cubeMaps/').l
 ]);
 
 
-const loader = new GLTFLoader();
 
-loader.load( 'Rocketship.glb', function ( glb ) {
-
-    const model = glb.scene;
-    scene.add(model);
-    model.traverse(function(node) {
-        if (node.isMesh) {
-            node.castShadow = true;
-        }
-    })
-
-});
 
 const camera = new THREE.PerspectiveCamera(50, 800 / 600);
 camera.position.set(0, 50, 0);
@@ -67,21 +55,14 @@ light.shadow.camera.top = 100;
 light.shadow.camera.bottom = -100;
 
 
-// const cubeGeometry = new THREE.BoxGeometry( 5, 5, 2 ); 
-// const cubeMaterial = new THREE.MeshBasicMaterial( {color: 0xffffee} ); 
-// const cube = new THREE.Mesh( cubeGeometry, cubeMaterial ); 
-// cube.translateY(5);
-// cube.castShadow = true; //default is false
-// cube.receiveShadow = false;
-// scene.add( cube );
 
 
-const planeGeometry = new THREE.PlaneGeometry(15,15);
+const planeGeometry = new THREE.PlaneGeometry(50,50);
 const planeMaterial = new THREE.MeshStandardMaterial( {color: 0xffffaa, side: THREE.DoubleSide} );
 const plane = new THREE.Mesh( planeGeometry, planeMaterial );
 plane.rotation.set(-Math.PI *0.5,0,0);
 plane.receiveShadow = true;
-scene.add( plane )
+// scene.add( plane )
 
 
 
@@ -101,9 +82,9 @@ window.addEventListener('resize', () => {
     renderer.render(scene, camera);
 });
 
-scene.add(new THREE.PointLightHelper(light));
-scene.add(new THREE.GridHelper(25, 25));
-scene.add( new THREE.CameraHelper( light.shadow.camera ) );
+// scene.add(new THREE.PointLightHelper(light));
+// scene.add(new THREE.GridHelper(25, 25));
+// scene.add( new THREE.CameraHelper( light.shadow.camera ) );
 
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
@@ -120,69 +101,46 @@ const loop = () => {
 loop();
 
 
-let speed = 0;
+// function createCube () {
+//     const cubeGeometry = new THREE.BoxGeometry( 2, Math.floor(Math.random() * 10 + 1), 2 ); 
+//     const cubeMaterial = new THREE.MeshBasicMaterial( {color: 0xffffee} ); 
+//     const cube = new THREE.Mesh( cubeGeometry, cubeMaterial ); 
+//     cube.castShadow = true; //default is false
+//     cube.receiveShadow = false;
+//     return cube;
+// }
 
-const animation = () => {
-    
-    
-    if (scene.children[5]!=undefined) {
-        if (speed<10) {
-            speed+=0.1;
-            scene.children[5].position.y = speed;    
-            
-            window.requestAnimationFrame(animation);
-        }
-        else {
-            scene.children[5].position.y =0;
-        }
+function createCube2 () {
+    const cubeGeometry = new THREE.BoxGeometry( 2, 2, 2 ); 
+    const cubeMaterial = new THREE.MeshBasicMaterial( {color: 0x000000} ); 
+    const cube = new THREE.Mesh( cubeGeometry, cubeMaterial ); 
+    cube.castShadow = true; //default is false
+    cube.receiveShadow = false;
+    return cube;
+}
 
+// for (let i = -5; i < 5; i++) {
+//     for (let j = -5; j < 5; j++) {
+//         let cube = createCube();
+//         cube.position.set(i*(1 + 3), cube.geometry.parameters.height/2 + 2, j*(1 + 3));
+//         scene.add(cube);
+//     }
+// }
+
+for (let i = -5; i < 5; i++) {
+    for (let j = -5; j < 5; j++) {
+        for (let k = -5; k < 5; k++) {
+            for (let l = -5; l < 5; l++) {
+                
+                let cube = createCube2();
+                cube.position.set(
+                (i*(1 + 3)+k*(1 + 3)+j*(1 + 3))/l*i*(1 + 3),
+                (i*(1 + 3)+k*(1 + 3)+j*(1 + 3))/l*j*(1 + 3),
+                (i*(1 + 3)+k*(1 + 3)+j*(1 + 3))/l*k*(1 + 3));
+                scene.add(cube);  
+            }
+        }
     }
-
-
-    renderer.render(scene, camera);
 }
 
-
-
-
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-
-function onPointerClick( event ) {
-
-	// calculate pointer position in normalized device coordinates
-	// (-1 to +1) for both components
-
-	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-
-    window.requestAnimationFrame(render);
-
-}
-
-
-function render() {
-
-
-	// update the picking ray with the camera and pointer position
-	raycaster.setFromCamera( pointer, camera );
-
-	// calculate objects intersecting the picking ray
-	const intersects = raycaster.intersectObjects( scene.children );
-
-	for ( let i = 0; i < intersects.length; i ++ ) {
-        
-        // intersects[ i ].object.material.color.set( 0xff0000 );
-        if (intersects[i].object.castShadow==true) {
-            scene.children[5].position.y = 0;
-            speed = 0;
-            animation();       
-        }
-
-	}
-
-}
-
-window.addEventListener( 'pointerdown', onPointerClick );
 
