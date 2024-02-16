@@ -94,23 +94,20 @@ const objects = [];
  
 // use just one sphere for everything
 
-const sphereGeometry = new THREE.SphereGeometry(1, 6, 6);
+const sphereGeometry = new THREE.SphereGeometry(4, 4, 4);
 const cylinderGeometry = new THREE.CylinderGeometry( 2, 2, 20, 32 ); 
 
 
 // Rotation sys
 
 const rotationSystem = new THREE.Object3D();
-rotationSystem.position.set(0,10,0);
+rotationSystem.position.set(0,20,0);
 scene.add(rotationSystem);
-objects.push(rotationSystem);
 
 
 // Cylinder orbit
 
-const cylinderOrbit = new THREE.Object3D();
-rotationSystem.add(cylinderOrbit);
-objects.push(cylinderOrbit);
+
 
 
 // Main cylinder
@@ -120,53 +117,64 @@ const mainCylinderMesh = new THREE.Mesh(cylinderGeometry, mainCylinderMaterial);
 // sunMesh.scale.set(5, 5, 5);
 mainCylinderMesh.rotation.set(Math.PI * 0.5, 0, 0)
 rotationSystem.add(mainCylinderMesh);
-objects.push(mainCylinderMesh);
 
 
 // cylinder
 
-const cylinderMaterial = new THREE.MeshBasicMaterial({color: 0x2233FF});
-const cylinderMesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
-cylinderMesh.scale.set(0.5, 0.4, 0.5)
-cylinderMesh.position.set(0, -3, 0)
-cylinderOrbit.add(cylinderMesh);
-objects.push(cylinderMesh);
+const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x2233FF });
+const ballMaterial = new THREE.MeshBasicMaterial({color: 0x888888});
+
+for (let i = 3; i < 4; i+=0.2) {
+    const cylinderOrbit = new THREE.Object3D();
+    const cylinderMesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+    const cylinderHeight = cylinderMesh.geometry.parameters.height * (i / 5);
+    cylinderMesh.scale.set(0.5, i/5, 0.5);
+    cylinderMesh.position.set(0, -cylinderHeight/2-1, i *20); // Positionnez les cylindres le long de l'axe z
+    cylinderOrbit.add(cylinderMesh);
+
+    const ballMesh = new THREE.Mesh(sphereGeometry, ballMaterial);
+    ballMesh.scale.set(.5, .5, .5);
+    ballMesh.position.set(0, -cylinderHeight, i*20)
+
+    cylinderOrbit.add(ballMesh);
+    cylinderOrbit.position.set(0,0,-68)
 
 
-// Ball orbit
+    rotationSystem.add(cylinderOrbit)
+    objects.push(cylinderOrbit);
+}
+console.log(objects);
 
-// const moonOrbit = new THREE.Object3D();
-// moonOrbit.position.x = 2;
-// earthOrbit.add(moonOrbit);
 
 // Ball
+let vitessesIndividuelles = [];
+for (let i = 1; i < 6; i++) {
+    vitessesIndividuelles.push(i/100); // 
+}
 
 
-// const moonMaterial = new THREE.MeshPhongMaterial({color: 0x888888, emissive: 0x222222});
-// const moonMesh = new THREE.Mesh(sphereGeometry, moonMaterial);
-// moonMesh.scale.set(.5, .5, .5);
-// moonOrbit.add(moonMesh);
-// objects.push(moonMesh);
-
-let go = false
+let go = false;
 
 scene.add(new THREE.GridHelper(25, 25));
 scene.add(new THREE.AxesHelper( 5 ))
 
-let time = 0
-const loop = (value) => {
+let rotation = 0;
+let direction = 1;
+const loop = () => {
     
-    go = value;
-    if (go) {
-        if (time<Math.PI/2) {
-            time += 0.01;
-            rotationSystem.rotation.z = time;
-        }
-        else {
-            time= -time;
-        }
+    if (go) {    
+
+        objects.forEach((obj, index) => {
+            rotation += vitessesIndividuelles[index] * direction;
+
+            if (Math.abs(rotation) >= Math.PI / 2) {
+                direction *= -1;
+            }
+
+            obj.rotation.z=rotation;
+            console.log("Vitesses individuelles :", vitessesIndividuelles[index]);
+        });
     }
-    console.log(time);
 
     controls.update();
     stats.update();
@@ -174,7 +182,10 @@ const loop = (value) => {
     window.requestAnimationFrame(loop);
 }
 
-// loop();
+loop();
 
+function bool() {
+    go = true;
+}
 
-document.body.addEventListener("keydown", loop(true));
+document.body.addEventListener("keydown", bool);
