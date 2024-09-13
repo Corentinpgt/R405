@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import Stats from 'three/addons/libs/stats.module.js';
 
+gsap.registerPlugin(CustomEase);
+
 const gui = new GUI();
 const params = {
     showHelpers: true,
@@ -119,13 +121,18 @@ window.addEventListener('resize', () =>
 
 
 // Fog
-scene.fog = new THREE.Fog(0xe0e0e0, 5, 100)
+// scene.fog = new THREE.Fog(0xe0e0e0, 5, 100)
 
 
 // Material
 const material = new THREE.MeshLambertMaterial({ color: 0xffffff })
 
 
+let rySpeed = 0;
+let walkSpeed = 0;
+let leftKeyIsDown = false;
+let rightKeyIsDown = false;
+let upKeyIsDown = false;
 
 
 scene.add(camHelper);
@@ -141,6 +148,7 @@ class Figure {
             armRotation: 0,
             headRotation: 0,
             leftEyeScale: 1,
+			walkRotation: 0,
 			...params
 		}
 		
@@ -162,7 +170,8 @@ class Figure {
 		this.headMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.headHue}, 30%, ${this.headLightness}%)` })
 		this.bodyMaterial = new THREE.MeshLambertMaterial({ color: `hsl(${this.bodyHue}, 85%, 50%)` })
 		
-		this.arms = []
+		this.arms = [];
+		this.legs = [];
 	}
 	
 	createBody() {
@@ -266,26 +275,27 @@ class Figure {
 	}
 	
 	createLegs() {
-		const legs = new THREE.Group()
+		const legsGroup = new THREE.Group()
 		const geometry = new THREE.BoxGeometry(0.25, 0.4, 0.25)
 		
 		for(let i = 0; i < 2; i++) {
 			const leg = new THREE.Mesh(geometry, this.headMaterial)
 			const m = i % 2 === 0 ? 1 : -1
-
             leg.castShadow = true;
+			this.legs.push(leg);
+
 
 			
-			legs.add(leg)
+			legsGroup.add(leg)
 			leg.position.x = m * 0.22
 		}
 		
-		this.group.add(legs)
-		legs.position.y = -1.15;
+		this.group.add(legsGroup);
+		legsGroup.position.y = -1.15;
 
 
 		
-		this.body.add(legs)
+		this.body.add(legsGroup)
 	}
 	
 	update() {
@@ -294,9 +304,61 @@ class Figure {
 		this.arms.forEach((arm, index) => {
 			const m = index % 2 === 0 ? 1 : -1
 			arm.rotation.z = this.params.armRotation * m
+			arm.rotation.x = this.params.walkRotation * m
 		})
+		this.legs.forEach((leg, index) => {
+			const m = index % 2 === 0 ? 1 : -1
+			leg.rotation.x = this.params.walkRotation * -m
+		})
+
+		
         this.head.rotation.z = this.params.headRotation;
         this.leftEye.scale.set(this.params.leftEyeScale, this.params.leftEyeScale, this.params.leftEyeScale);
+		this.group.position.x = this.params.x;
+		this.group.position.z = this.params.z;
+
+		// Move the figure
+
+		if (leftKeyIsDown) {
+			rySpeed += 0.003;
+
+		}
+		if (rightKeyIsDown) {
+			rySpeed -= 0.003;
+
+		}
+		if (upKeyIsDown) {
+			walkSpeed += 0.005;
+		}
+
+		if (walkSpeed >= 0.01 && !walkTl.isActive()) {
+			idleTimeline.pause(0);
+			walkTl.restart();
+		}
+		if ((!jumpTimeline.isActive()) && (!walkTl.isActive()) && (!idleTimeline.isActive()) && (walkSpeed < 0.01) && (rySpeed < 0.01)) {
+			idleTimeline.restart();
+		
+		}
+
+		figure.params.ry += rySpeed;
+		rySpeed *= 0.9;
+
+		figure.params.x += walkSpeed*Math.sin(figure.params.ry);
+		figure.params.z += walkSpeed*Math.cos(figure.params.ry);
+		walkSpeed *= 0.9;
+
+
+		// MAJ des bullets
+		for (let i = bullets.length - 1; i >= 0; i--) {
+			if (bullets[i].isAlive()) {
+				bullets[i].update();
+			}
+			else {
+				scene.remove(bullets[i]);
+				bullets.splice(i, 1);
+			}
+			
+		}
 	}
 	
 	init() {
@@ -305,6 +367,7 @@ class Figure {
 		this.createArms()
 	}
 }
+
 
 const figure = new Figure()
 figure.init()
@@ -337,19 +400,93 @@ document.addEventListener('keydown', (e) => {
             armRotation: degreesToRadians(90),
             repeat: 1,
             yoyo: true,
-            duration: 0.5
+            duration: 0.5,
+			ease: CustomEase.create("custom", "M0,0 C0.109,-0.129 0.301,-0.121 0.441,0.096 0.615,0.367 0.703,0.771 1,0.77 "),
         });
+		if (!walkTl.isActive()) {
+
+		}
+
         
     }
     if (e.key === 'q') {
-        figure.params.ry += degreesToRadians(5);
+		leftKeyIsDown = true;
+        // figure.params.ry += degreesToRadians(5);
     }
 
     if (e.key === 'd') {
-        figure.params.ry -= degreesToRadians(5);
+		rightKeyIsDown = true;
+        // figure.params.ry -= degreesToRadians(5);
+
     }
+
+	if (e.key === 'z') {
+		upKeyIsDown = true;
+		
+	}
     
 });
+
+document.addEventListener('keyup', (e) => {
+
+	if (e.key === 'q') {
+		leftKeyIsDown = false;
+	}
+
+	if (e.key === 'd') {
+		rightKeyIsDown = false;
+	}
+
+	if (e.key === 'z') {
+		upKeyIsDown = false;
+	}
+	
+});
+
+
+class Bullet extends THREE.Mesh {
+	constructor(x,y,z, ry) {
+		super();
+		this.x = x;
+		this.y = y;
+		this.z = z;
+		this.ry = ry;
+		this.life = 200;
+
+		this.bullet = new THREE.Mesh(
+			new THREE.SphereGeometry(0.2, 32, 32),
+			new THREE.MeshLambertMaterial({ color: 0xff0000 })
+		);
+		this.bullet.castShadow = true;
+		this.bullet.name = 'bullet';
+		this.add(this.bullet);
+		this.position.set(x, y, z);
+	}
+
+	isAlive() {
+		return this.life > 0;
+	}
+
+	update() {
+		this.life--;
+		const speed = 1.1;
+		this.position.x += speed*Math.sin(this.ry);
+		this.position.z += speed*Math.cos(this.ry);
+
+	}
+}
+
+
+let bullets = [];
+document.addEventListener('keydown', (e) => {
+	if (e.key === 'v') {
+		let bullet = new Bullet(figure.params.x, figure.params.y, figure.params.z, figure.params.ry);
+		scene.add(bullet);
+		bullets.push(bullet);
+	}
+});
+
+
 
 
 let idleTimeline = gsap.timeline();
@@ -369,6 +506,27 @@ idleTimeline.to(figure.params, {
     duration: 1,
 
 }, ">2.2")
+
+// Walk animation
+let walkTl = gsap.timeline();
+walkTl.to(figure.params, {
+	walkRotation: degreesToRadians(45),
+	repeat: 1,
+	yoyo: true,
+	duration: .25,
+	
+});
+
+walkTl.to(figure.params, {
+	walkRotation: degreesToRadians(-45),
+	repeat: 1,
+	yoyo: true,
+	duration: .25,
+	
+}, ">");
+walkTl.pause(0);
+
+
 
 gsap.ticker.add(() => {
     axesHelper.visible = params.showHelpers;
